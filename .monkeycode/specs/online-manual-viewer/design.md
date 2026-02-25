@@ -1,103 +1,109 @@
-# Online Manual Viewer - Technical Design Document
+# 技术设计文档：在线文档浏览网站
 
-Feature Name: online-manual-viewer
-Updated: 2026-02-25
+功能名称：online-manual-viewer
+更新日期：2026-02-25
 
-## Description
+## 项目概述
 
-在线文档浏览系统，采用静态站点生成(SSG)架构，支持 PDF 手册上传、自动拆图、静态页面生成、广告位管理等功能。系统分为两部分：
+在线文档浏览系统，采用静态站点生成（SSG）架构，支持 PDF/PPT/Word 文档上传、自动拆图、静态页面生成、广告位管理等功能。系统分为两部分：
 
 1. **公开站点**：纯静态 HTML，高性能、SEO 友好
-2. **管理后台**：Node.js 服务，提供 PDF 处理、数据管理、页面生成功能
+2. **管理后台**：Node.js 服务，提供文档处理、数据管理、页面生成功能
+
+**预估规模**：文档存储 100GB，支持 10,000+ 手册，1,000,000+ 页面
 
 ---
 
-## Architecture
+## 系统架构
 
-### System Architecture Overview
+### 系统架构概览
 
 ```mermaid
 flowchart TB
-    subgraph "Admin Layer"
-        A[Admin Browser] --> B[Admin Panel - Node.js]
-        B --> C[PDF Processor]
-        B --> D[PostgreSQL Database]
-        B --> E[Static Site Generator]
+    subgraph "管理后台层"
+        A[管理员浏览器] --> B[管理后台 - Node.js]
+        B --> C[文档处理器]
+        B --> D[PostgreSQL 数据库]
+        B --> E[静态站点生成器]
     end
 
-    subgraph "Storage Layer"
-        F[Local File System]
-        G[Image Files - WebP/JPEG]
-        H[Generated HTML Files]
+    subgraph "存储层"
+        F[本地文件系统]
+        G[图片文件 - WebP]
+        H[生成的 HTML 文件]
+        I[搜索索引 JSON]
     end
 
-    subgraph "Public Layer"
-        I[Nginx/Web Server]
-        J[Static HTML Pages]
-        K[Visitor Browser]
+    subgraph "公开访问层"
+        J[Nginx/Web 服务器]
+        K[静态 HTML 页面]
+        L[访客浏览器]
     end
 
     C --> F
     E --> H
+    E --> I
     D --> E
     F --> G
-    H --> I
+    H --> J
     I --> J
     J --> K
+    K --> L
 
     style B fill:#f9f,stroke:#333
     style D fill:#bbf,stroke:#333
-    style I fill:#bfb,stroke:#333
+    style J fill:#bfb,stroke:#333
 ```
 
-### Request Flow
+### 请求流程
 
 ```mermaid
 sequenceDiagram
-    participant Admin
-    participant AdminPanel
-    participant PDFProcessor
-    participant Database
-    participant FileSystem
+    participant 管理员
+    participant 管理后台
+    participant 文档处理器
+    participant 数据库
+    participant 文件系统
     participant SSG
-    participant WebServer
-    participant Visitor
+    participant Web服务器
+    participant 访客
 
-    Note over Admin,SSG: Admin Workflow
-    Admin->>AdminPanel: Upload PDF + Metadata
-    AdminPanel->>PDFProcessor: Process PDF
-    PDFProcessor->>FileSystem: Save Page Images
-    PDFProcessor->>Database: Store Manual Metadata
-    AdminPanel->>SSG: Trigger Page Generation
-    SSG->>Database: Fetch All Manuals
-    SSG->>FileSystem: Generate Static HTML
+    Note over 管理员,SSG: 管理员工作流
+    管理员->>管理后台: 上传文档 + 元数据
+    管理后台->>文档处理器: 处理文档
+    文档处理器->>文件系统: 保存页面图片
+    文档处理器->>数据库: 存储手册元数据
+    管理后台->>SSG: 触发页面生成
+    SSG->>数据库: 获取所有手册数据
+    SSG->>文件系统: 生成静态 HTML
+    SSG->>文件系统: 生成搜索索引
 
-    Note over WebServer,Visitor: Visitor Workflow
-    Visitor->>WebServer: Request Page
-    WebServer->>FileSystem: Serve Static HTML
-    FileSystem->>Visitor: Return HTML Response
+    Note over Web服务器,访客: 访客工作流
+    访客->>Web服务器: 请求页面
+    Web服务器->>文件系统: 提供静态 HTML
+    文件系统->>访客: 返回 HTML 响应
 ```
 
 ---
 
-## Components and Interfaces
+## 组件与接口
 
-### 1. PDF Processor Module
+### 1. 文档处理器模块
 
-**Responsibility**: Convert uploaded PDF files into individual page images
+**职责**：将上传的 PDF/PPT/Word 文件转换为单页图片
 
-**Location**: `src/processor/pdf.js`
+**位置**：`src/processor/`
 
 ```javascript
-// Interface Definition
-interface PDFProcessor {
-  // Split PDF into images
-  split(pdfPath: string, outputDir: string): Promise<PageImage[]>;
+// 接口定义
+interface DocumentProcessor {
+  // 拆分文档为图片
+  split(filePath: string, outputDir: string): Promise<PageImage[]>;
 
-  // Get PDF metadata (page count, dimensions)
-  getMetadata(pdfPath: string): Promise<PDFMetadata>;
+  // 获取文档元数据（页数、尺寸）
+  getMetadata(filePath: string): Promise<DocumentMetadata>;
 
-  // Optimize image (convert to WebP, compress)
+  // 优化图片（转换为 WebP，压缩）
   optimize(imagePath: string): Promise<string>;
 }
 
@@ -105,108 +111,126 @@ interface PageImage {
   pageNumber: number;
   originalPath: string;
   webpPath: string;
-  jpegPath: string;
   width: number;
   height: number;
   fileSize: number;
 }
 
-interface PDFMetadata {
+interface DocumentMetadata {
   title: string;
   pageCount: number;
   pageSize: { width: number; height: number };
+  fileType: 'pdf' | 'ppt' | 'pptx' | 'doc' | 'docx';
 }
 ```
 
-**Dependencies**:
-- `pdf-poppler` or `pdf2pic` - PDF to image conversion
-- `sharp` - Image optimization and WebP conversion
+**处理器实现**：
 
-### 2. Static Site Generator (SSG)
+| 文件类型 | 处理器 | 依赖库 |
+|---------|--------|--------|
+| PDF | `src/processor/pdf.js` | `pdf2pic` + `sharp` |
+| PPT/PPTX | `src/processor/ppt.js` | LibreOffice + `sharp` |
+| DOC/DOCX | `src/processor/doc.js` | LibreOffice + `sharp` |
 
-**Responsibility**: Generate static HTML files from database content
+**依赖项**：
+- `pdf2pic` - PDF 转图片
+- `sharp` - 图片优化和 WebP 转换
+- `libreoffice` - Office 文档转图片（系统级依赖）
 
-**Location**: `src/generator/ssg.js`
+### 2. 静态站点生成器（SSG）
+
+**职责**：从数据库内容生成静态 HTML 文件
+
+**位置**：`src/generator/ssg.js`
 
 ```javascript
 interface StaticSiteGenerator {
-  // Generate all static pages
+  // 生成所有静态页面
   generateAll(): Promise<void>;
 
-  // Generate pages for a specific manual
+  // 生成指定手册的页面
   generateManual(manualId: string): Promise<void>;
 
-  // Generate homepage
+  // 生成首页
   generateHomepage(): Promise<void>;
 
-  // Generate brand/category listing pages
+  // 生成品牌/分类列表页
   generateListings(): Promise<void>;
 
-  // Generate sitemap.xml
+  // 生成 sitemap.xml
   generateSitemap(): Promise<void>;
+
+  // 生成搜索索引
+  generateSearchIndex(): Promise<void>;
 }
 ```
 
-**Template Engine**: `ejs` or `nunjucks`
+**模板引擎**：`ejs` 或 `nunjucks`
 
-### 3. Admin Panel API
+### 3. 管理后台 API
 
-**Responsibility**: Provide backend API for admin operations
+**职责**：为管理操作提供后端 API
 
-**Location**: `src/admin/`
+**位置**：`src/admin/`
 
 ```javascript
-// API Endpoints
-POST   /api/admin/login              // Admin authentication
-POST   /api/admin/logout             // Admin logout
-GET    /api/admin/dashboard          // Dashboard statistics
+// API 端点
+POST   /api/admin/login              // 管理员认证
+POST   /api/admin/logout             // 管理员登出
+GET    /api/admin/dashboard          // 仪表盘统计
+POST   /api/admin/reauth             // 敏感操作重新认证
 
-GET    /api/manuals                  // List all manuals
-POST   /api/manuals                  // Create new manual
-GET    /api/manuals/:id              // Get manual details
-PUT    /api/manuals/:id              // Update manual metadata
-DELETE /api/manuals/:id              // Delete manual
+GET    /api/manuals                  // 列出所有手册
+POST   /api/manuals                  // 创建新手册
+GET    /api/manuals/:id              // 获取手册详情
+PUT    /api/manuals/:id              // 更新手册元数据
+DELETE /api/manuals/:id              // 删除手册
 
-POST   /api/upload                   // Upload and process PDF
+POST   /api/upload                   // 上传并处理文档
 
-GET    /api/ads                      // List ad configurations
-POST   /api/ads                      // Create ad config
-PUT    /api/ads/:id                  // Update ad config
-DELETE /api/ads/:id                  // Delete ad config
+GET    /api/ads                      // 列出广告配置
+POST   /api/ads                      // 创建广告配置
+PUT    /api/ads/:id                  // 更新广告配置
+DELETE /api/ads/:id                  // 删除广告配置
 
-GET    /api/stats                    // Get access statistics
+GET    /api/stats                    // 获取访问统计
+
+GET    /api/backup                   // 获取备份列表
+POST   /api/backup                   // 手动触发备份
+GET    /api/backup/:id/download      // 下载备份文件
 ```
 
-### 4. Admin Panel Frontend
+### 4. 管理后台前端
 
-**Responsibility**: Web UI for admin operations
+**职责**：管理操作的 Web 界面
 
-**Location**: `src/admin/public/`
+**位置**：`src/admin/public/`
 
-**Technology**: Vanilla JS or lightweight framework (Alpine.js)
+**技术选型**：原生 JS 或轻量框架（Alpine.js）
 
-**Features**:
-- Login page
-- Dashboard with statistics
-- Manual management (upload, edit, delete)
-- Ad slot management
-- Statistics viewer
+**功能模块**：
+- 登录页面
+- 仪表盘（统计数据）
+- 手册管理（上传、编辑、删除）
+- 广告位管理
+- 统计数据查看
+- 备份管理
 
-### 5. Statistics Collector
+### 5. 统计收集器
 
-**Responsibility**: Collect and aggregate page view statistics
+**职责**：收集和聚合页面访问统计
 
-**Location**: `src/stats/collector.js`
+**位置**：`src/stats/collector.js`
 
 ```javascript
 interface StatsCollector {
-  // Record a page view (called via API endpoint)
+  // 记录页面访问（通过 API 端点调用）
   recordPageView(data: PageViewData): Promise<void>;
 
-  // Aggregate daily statistics
+  // 聚合每日统计
   aggregateDaily(): Promise<void>;
 
-  // Get statistics for dashboard
+  // 获取仪表盘统计
   getStats(period: 'day' | 'week' | 'month'): Promise<StatsResult>;
 }
 
@@ -220,14 +244,104 @@ interface PageViewData {
 }
 ```
 
+### 6. 前端搜索模块
+
+**职责**：在访客端提供快速的手册搜索功能
+
+**位置**：`public/js/search.js`
+
+```javascript
+interface FrontendSearch {
+  // 初始化搜索索引
+  init(): Promise<void>;
+
+  // 搜索手册
+  search(query: string): SearchResult[];
+
+  // 高亮匹配关键词
+  highlight(text: string, query: string): string;
+}
+
+interface SearchResult {
+  manualId: string;
+  title: string;
+  brand: string;
+  model: string;
+  category: string;
+  url: string;
+  highlights: string[];
+}
+```
+
+**搜索索引结构**（`public/data/search-index.json`）：
+
+```json
+{
+  "version": "20260225",
+  "manuals": [
+    {
+      "id": 1,
+      "title": "ABC-123 服务手册",
+      "brand": "Atlas Copco",
+      "model": "GA 37",
+      "category": "空压机",
+      "url": "/manual/atlas-copco/ga-37/page-1"
+    }
+  ]
+}
+```
+
+### 7. 备份模块
+
+**职责**：自动和手动备份数据库及图片文件
+
+**位置**：`src/backup/manager.js`
+
+```javascript
+interface BackupManager {
+  // 执行完整备份
+  createBackup(): Promise<BackupResult>;
+
+  // 恢复备份
+  restoreBackup(backupId: string): Promise<void>;
+
+  // 清理旧备份
+  cleanupOldBackups(): Promise<void>;
+
+  // 获取备份列表
+  listBackups(): Promise<BackupInfo[]>;
+}
+
+interface BackupResult {
+  id: string;
+  timestamp: Date;
+  databaseFile: string;
+  imagesArchive: string;
+  size: number;
+}
+
+interface BackupInfo {
+  id: string;
+  timestamp: Date;
+  size: number;
+  status: 'success' | 'failed';
+}
+```
+
+**备份策略**：
+- 每周自动执行一次完整备份
+- 保留最近 4 周的备份文件
+- 备份内容：数据库 + 图片目录
+- 存储位置：`/var/backups/manual-viewer/`
+
 ---
 
-## Data Models
+## 数据模型
 
-### PostgreSQL Schema
+### PostgreSQL 数据库结构
 
 ```sql
--- Manuals Table
+-- 手册表
 CREATE TABLE manuals (
     id SERIAL PRIMARY KEY,
     slug VARCHAR(255) UNIQUE NOT NULL,
@@ -237,7 +351,8 @@ CREATE TABLE manuals (
     category VARCHAR(100),
     description TEXT,
     page_count INTEGER NOT NULL DEFAULT 0,
-    language VARCHAR(10) DEFAULT 'en',
+    file_type VARCHAR(20) DEFAULT 'pdf', -- pdf, ppt, pptx, doc, docx
+    language VARCHAR(10) DEFAULT 'zh',
     status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -245,16 +360,16 @@ CREATE TABLE manuals (
 
     INDEX idx_brand (brand),
     INDEX idx_model (model),
-    INDEX idx_status (status)
+    INDEX idx_status (status),
+    INDEX idx_category (category)
 );
 
--- Pages Table
+-- 页面表
 CREATE TABLE pages (
     id SERIAL PRIMARY KEY,
     manual_id INTEGER REFERENCES manuals(id) ON DELETE CASCADE,
     page_number INTEGER NOT NULL,
     image_webp VARCHAR(255) NOT NULL,
-    image_jpeg VARCHAR(255) NOT NULL,
     image_width INTEGER,
     image_height INTEGER,
     section_title VARCHAR(255),
@@ -267,7 +382,7 @@ CREATE TABLE pages (
     INDEX idx_manual_page (manual_id, page_number)
 );
 
--- Table of Contents
+-- 目录表
 CREATE TABLE toc_entries (
     id SERIAL PRIMARY KEY,
     manual_id INTEGER REFERENCES manuals(id) ON DELETE CASCADE,
@@ -277,19 +392,19 @@ CREATE TABLE toc_entries (
     sort_order INTEGER DEFAULT 0
 );
 
--- Ad Configurations
+-- 广告配置表
 CREATE TABLE ad_slots (
     id SERIAL PRIMARY KEY,
-    slot_name VARCHAR(50) NOT NULL, -- 'top-banner', 'left-sidebar', etc.
-    slot_type VARCHAR(50) NOT NULL, -- 'adsense', 'custom'
+    slot_name VARCHAR(50) NOT NULL, -- 'top-banner', 'left-sidebar' 等
+    slot_type VARCHAR(50) NOT NULL, -- 'baidu', '360', 'adsense', 'custom'
     ad_code TEXT,
     is_active BOOLEAN DEFAULT true,
-    targeting JSONB, -- {"brands": ["Atlas Copco"], "manuals": [1,2,3]}
+    targeting JSONB, -- {"brands": ["品牌名"], "manuals": [1,2,3]}
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Page Views (Raw)
+-- 访问记录（原始）
 CREATE TABLE page_views_raw (
     id BIGSERIAL PRIMARY KEY,
     manual_id INTEGER REFERENCES manuals(id),
@@ -300,7 +415,7 @@ CREATE TABLE page_views_raw (
     viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Page Views (Aggregated)
+-- 访问统计（按日聚合）
 CREATE TABLE page_views_daily (
     id SERIAL PRIMARY KEY,
     manual_id INTEGER REFERENCES manuals(id),
@@ -311,7 +426,7 @@ CREATE TABLE page_views_daily (
     UNIQUE(manual_id, page_number, view_date)
 );
 
--- Admin Sessions
+-- 管理员会话表
 CREATE TABLE admin_sessions (
     id SERIAL PRIMARY KEY,
     token_hash VARCHAR(255) NOT NULL,
@@ -320,7 +435,7 @@ CREATE TABLE admin_sessions (
     expires_at TIMESTAMP NOT NULL
 );
 
--- Admin Logs
+-- 管理员操作日志表
 CREATE TABLE admin_logs (
     id SERIAL PRIMARY KEY,
     action VARCHAR(50) NOT NULL,
@@ -331,7 +446,21 @@ CREATE TABLE admin_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Site Settings
+-- 备份记录表
+CREATE TABLE backup_records (
+    id SERIAL PRIMARY KEY,
+    backup_id VARCHAR(100) UNIQUE NOT NULL,
+    type VARCHAR(20) DEFAULT 'scheduled', -- scheduled, manual
+    database_path VARCHAR(255),
+    images_path VARCHAR(255),
+    size_bytes BIGINT,
+    status VARCHAR(20) DEFAULT 'pending', -- pending, success, failed
+    error_message TEXT,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+-- 网站设置表
 CREATE TABLE site_settings (
     key VARCHAR(100) PRIMARY KEY,
     value TEXT,
@@ -341,17 +470,21 @@ CREATE TABLE site_settings (
 
 ---
 
-## Directory Structure
+## 目录结构
 
 ```
 project-root/
 ├── src/
 │   ├── processor/
-│   │   ├── pdf.js              # PDF splitting logic
-│   │   └── image.js            # Image optimization
+│   │   ├── index.js             # 文档处理器入口
+│   │   ├── pdf.js               # PDF 拆分逻辑
+│   │   ├── ppt.js               # PPT 拆分逻辑
+│   │   ├── doc.js               # Word 拆分逻辑
+│   │   └── image.js             # 图片优化
 │   ├── generator/
-│   │   ├── ssg.js              # Static site generator
-│   │   └── templates/          # EJS/Nunjucks templates
+│   │   ├── ssg.js               # 静态站点生成器
+│   │   ├── search-index.js      # 搜索索引生成
+│   │   └── templates/           # EJS/Nunjucks 模板
 │   │       ├── layout.html
 │   │       ├── page.html
 │   │       ├── homepage.html
@@ -360,26 +493,31 @@ project-root/
 │   │           ├── header.html
 │   │           ├── footer.html
 │   │           ├── breadcrumbs.html
-│   │           └── ad-slot.html
+│   │           ├── ad-slot.html
+│   │           └── search.html
 │   ├── admin/
-│   │   ├── server.js           # Express server
+│   │   ├── server.js            # Express 服务器
 │   │   ├── routes/
 │   │   │   ├── auth.js
 │   │   │   ├── manuals.js
 │   │   │   ├── ads.js
-│   │   │   └── stats.js
+│   │   │   ├── stats.js
+│   │   │   └── backup.js
 │   │   ├── middleware/
 │   │   │   └── auth.js
-│   │   └── public/             # Admin panel frontend
+│   │   └── public/              # 管理后台前端
 │   │       ├── index.html
 │   │       ├── css/
 │   │       └── js/
 │   ├── stats/
 │   │   ├── collector.js
 │   │   └── aggregator.js
+│   ├── backup/
+│   │   ├── manager.js
+│   │   └── scheduler.js
 │   └── config/
-│       └── index.js            # Configuration management
-├── public/                     # Generated static site
+│       └── index.js             # 配置管理
+├── public/                      # 生成的静态站点
 │   ├── index.html
 │   ├── manual/
 │   │   └── {brand}/
@@ -392,15 +530,21 @@ project-root/
 │   │   └── manuals/
 │   │       └── {manual-id}/
 │   │           ├── page-1.webp
-│   │           ├── page-1.jpg
 │   │           └── ...
+│   ├── data/
+│   │   └── search-index.json    # 前端搜索索引
 │   ├── css/
 │   ├── js/
+│   │   ├── main.js
+│   │   ├── search.js
+│   │   └── navigation.js
 │   └── sitemap.xml
-├── uploads/                    # Temporary upload directory
+├── uploads/                     # 临时上传目录
+├── backups/                     # 备份存储目录
 ├── scripts/
-│   ├── generate.js             # CLI for SSG
-│   └── migrate.js              # Database migrations
+│   ├── generate.js              # SSG 命令行工具
+│   ├── migrate.js               # 数据库迁移
+│   └── backup.js                # 备份命令行工具
 ├── package.json
 ├── .env.example
 └── nginx.conf.example
@@ -408,26 +552,26 @@ project-root/
 
 ---
 
-## Page Template Structure
+## 页面模板结构
 
-Based on existing HTML files, each generated page follows this structure:
+基于现有 HTML 文件，每个生成的页面遵循以下结构：
 
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Model ABC-123 Service Manual | Page 5</title>
-    <meta name="description" content="Page 5 of ABC-123 service manual, showing pressure settings and troubleshooting.">
+    <title>ABC-123型服务手册 | 第5页</title>
+    <meta name="description" content="ABC-123服务手册第5页，包含压力设置和故障排除内容。">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Model ABC-123 Service Manual | Page 5">
-    <meta property="og:description" content="Page 5 of ABC-123 service manual...">
-    <meta property="og:image" content="https://example.com/images/manuals/123/page-5.jpg">
+    <meta property="og:title" content="ABC-123型服务手册 | 第5页">
+    <meta property="og:description" content="ABC-123服务手册第5页...">
+    <meta property="og:image" content="https://example.com/images/manuals/123/page-5.webp">
     <meta property="og:url" content="https://example.com/manual/brand/model/page-5">
 
-    <!-- Canonical -->
+    <!-- 规范 URL -->
     <link rel="canonical" href="https://example.com/manual/brand/model/page-5">
 
     <!-- Schema.org -->
@@ -435,129 +579,149 @@ Based on existing HTML files, each generated page follows this structure:
     {
         "@context": "https://schema.org",
         "@type": "Article",
-        "headline": "Model ABC-123 Service Manual - Page 5",
-        "description": "Page 5 of ABC-123 service manual...",
-        "image": "https://example.com/images/manuals/123/page-5.jpg"
+        "headline": "ABC-123型服务手册 - 第5页",
+        "description": "ABC-123服务手册第5页...",
+        "image": "https://example.com/images/manuals/123/page-5.webp"
     }
     </script>
 
-    <style>/* Inline critical CSS */</style>
+    <style>/* 内联关键 CSS */</style>
 </head>
 <body>
-    <!-- Header with Logo -->
-    <header>...</header>
+    <!-- 顶部 Logo 和搜索 -->
+    <header>
+        <div class="logo">...</div>
+        <div class="search">
+            <input type="text" id="search-input" placeholder="搜索手册...">
+            <div id="search-results"></div>
+        </div>
+    </header>
 
-    <!-- Top Ad Banner (728x90) -->
-    <div class="ad-top">ADSENSE CODE</div>
+    <!-- 顶部广告横幅 (728x90) -->
+    <div class="ad-top">广告代码</div>
 
-    <!-- Breadcrumbs -->
+    <!-- 面包屑导航 -->
     <nav class="breadcrumbs">
-        <a href="/">Home</a> &gt;
+        <a href="/">首页</a> &gt;
         <a href="/brand/atlas-copco">Atlas Copco</a> &gt;
         <a href="/manual/atlas-copco/ga-37/page-1">GA 37</a> &gt;
-        <span>Page 5</span>
+        <span>第5页</span>
     </nav>
 
-    <!-- Main Content Grid -->
+    <!-- 主内容网格 -->
     <div class="main-grid">
-        <!-- Left Sidebar: TOC + Ad (300x600) -->
+        <!-- 左侧边栏：目录 + 广告 (300x600) -->
         <aside class="sidebar-left">
             <div class="toc">...</div>
-            <div class="ad-sidebar">ADSENSE CODE</div>
+            <div class="ad-sidebar">广告代码</div>
         </aside>
 
-        <!-- Center: Page Image -->
+        <!-- 中间：页面图片 -->
         <main class="content-area">
             <div class="page-image-wrapper">
                 <img src="/images/manuals/123/page-5.webp"
-                     alt="Model ABC-123 Manual Page 5"
+                     alt="ABC-123型手册第5页"
                      loading="lazy">
                 <div class="watermark-overlay"></div>
             </div>
 
-            <!-- Pagination -->
+            <!-- 分页导航 -->
             <div class="pagination">
-                <a href="page-4.html">Previous</a>
-                <span>Page 5 of 64</span>
-                <a href="page-6.html">Next</a>
+                <a href="page-4.html">上一页</a>
+                <span>第 5 页 / 共 64 页</span>
+                <a href="page-6.html">下一页</a>
             </div>
 
-            <!-- SEO Text -->
+            <!-- SEO 文本 -->
             <div class="seo-text">...</div>
         </main>
 
-        <!-- Right Sidebar: Related + Ad (300x600) -->
+        <!-- 右侧边栏：相关手册 + 广告 (300x600) -->
         <aside class="sidebar-right">
             <div class="related">...</div>
-            <div class="ad-sidebar">ADSENSE CODE</div>
+            <div class="ad-sidebar">广告代码</div>
         </aside>
     </div>
 
-    <!-- Bottom Ad Banner (728x90) -->
-    <div class="ad-bottom">ADSENSE CODE</div>
+    <!-- 底部广告横幅 (728x90) -->
+    <div class="ad-bottom">广告代码</div>
 
-    <!-- Footer -->
+    <!-- 页脚 -->
     <footer>...</footer>
+
+    <!-- 搜索功能 -->
+    <script src="/js/search.js"></script>
+    <script>
+        // 初始化搜索
+        FrontendSearch.init();
+    </script>
 </body>
 </html>
 ```
 
 ---
 
-## Ad Slot Configuration
+## 广告位配置
 
-| Slot Name | Position | Size | Responsive Behavior |
-|-----------|----------|------|---------------------|
-| top-banner | Header below | 728x90 | Stays visible on all sizes |
-| left-sidebar | Left column | 300x600 | Hidden on mobile (<768px) |
-| right-sidebar | Right column | 300x600 | Hidden on tablet (<1024px) |
-| bottom-banner | Above footer | 728x90 | Stays visible on all sizes |
+| 广告位名称 | 位置 | 尺寸 | 响应式行为 |
+|-----------|------|------|-----------|
+| top-banner | 头部下方 | 728x90 | 所有尺寸保持可见 |
+| left-sidebar | 左侧栏 | 300x600 | 移动端隐藏 (<768px) |
+| right-sidebar | 右侧栏 | 300x600 | 平板隐藏 (<1024px) |
+| bottom-banner | 页脚上方 | 728x90 | 所有尺寸保持可见 |
 
----
-
-## Correctness Properties
-
-### Invariants
-
-1. **Page Number Consistency**: For any manual M with page_count P, there exist exactly P pages in the pages table with manual_id = M.id
-2. **Image File Existence**: For every page record, the referenced image files MUST exist in the filesystem
-3. **URL Slug Uniqueness**: Each manual MUST have a unique slug
-4. **Page Sequence**: Page numbers for a manual MUST be sequential starting from 1
-5. **TOC Consistency**: TOC entry page ranges MUST be within the manual's total page count
-
-### Constraints
-
-1. Admin session expires after 24 hours of inactivity
-2. PDF file size MUST not exceed 100MB
-3. Image files MUST be optimized (WebP primary, JPEG fallback)
-4. Generated HTML files MUST be valid HTML5
+**支持的广告联盟**：
+- 百度联盟
+- 360联盟
+- Google AdSense
+- 自定义 HTML
 
 ---
 
-## Error Handling
+## 正确性属性
 
-### Error Categories
+### 不变式
 
-| Category | HTTP Status | Example | User Message |
-|----------|-------------|---------|--------------|
-| Validation | 400 | Invalid PDF format | "Please upload a valid PDF file" |
-| Authentication | 401 | Session expired | "Please log in again" |
-| Authorization | 403 | Invalid credentials | "Invalid username or password" |
-| Not Found | 404 | Manual not found | "The requested manual was not found" |
-| Conflict | 409 | Duplicate slug | "A manual with this identifier already exists" |
-| Rate Limit | 429 | Too many attempts | "Too many attempts. Please wait 15 minutes" |
-| Server Error | 500 | PDF processing failed | "An error occurred. Please try again" |
+1. **页码一致性**：对于任意手册 M 有 page_count P，pages 表中必须存在恰好 P 条记录，且 manual_id = M.id
+2. **图片文件存在性**：每条页面记录引用的图片文件必须存在于文件系统中
+3. **URL Slug 唯一性**：每个手册必须有唯一的 slug
+4. **页码序列**：手册的页码必须从 1 开始连续编号
+5. **目录一致性**：目录条目的页码范围必须在手册总页数范围内
 
-### Error Response Format
+### 约束条件
+
+1. 管理员会话在 24 小时无活动后过期
+2. 文档文件大小不得超过 200MB
+3. 图片文件必须优化（WebP 格式）
+4. 生成的 HTML 文件必须是有效的 HTML5
+5. 敏感操作需要重新认证
+
+---
+
+## 错误处理
+
+### 错误分类
+
+| 分类 | HTTP 状态码 | 示例 | 用户提示 |
+|------|------------|------|---------|
+| 验证错误 | 400 | 文档格式无效 | "请上传有效的文档文件" |
+| 认证错误 | 401 | 会话过期 | "请重新登录" |
+| 授权错误 | 403 | 凭据无效 | "用户名或密码错误" |
+| 未找到 | 404 | 手册不存在 | "请求的手册不存在" |
+| 冲突 | 409 | Slug 重复 | "该标识符的手册已存在" |
+| 频率限制 | 429 | 尝试次数过多 | "尝试次数过多，请等待 15 分钟" |
+| 服务器错误 | 500 | 文档处理失败 | "发生错误，请重试" |
+
+### 错误响应格式
 
 ```json
 {
     "error": {
         "code": "VALIDATION_ERROR",
-        "message": "PDF file size exceeds maximum allowed (100MB)",
+        "message": "文档文件大小超过最大限制 (200MB)",
         "details": {
-            "maxSize": "100MB",
-            "actualSize": "150MB"
+            "maxSize": "200MB",
+            "actualSize": "250MB"
         }
     }
 }
@@ -565,51 +729,55 @@ Based on existing HTML files, each generated page follows this structure:
 
 ---
 
-## Test Strategy
+## 测试策略
 
-### Unit Tests
+### 单元测试
 
-- PDF processor: Split accuracy, image quality
-- SSG: Template rendering, URL generation
-- Admin API: Authentication, CRUD operations
-- Statistics: Aggregation accuracy
+- 文档处理器：拆分准确性、图片质量
+- SSG：模板渲染、URL 生成
+- 管理后台 API：认证、增删改查操作
+- 统计模块：聚合准确性
+- 搜索模块：索引生成、搜索准确性
 
-### Integration Tests
+### 集成测试
 
-- Full upload workflow: Upload → Process → Generate → Verify
-- Admin panel: Login → Create manual → Verify public pages
-- Ad targeting: Configure ads → Verify correct placement
+- 完整上传流程：上传 → 处理 → 生成 → 验证
+- 管理后台：登录 → 创建手册 → 验证公开页面
+- 广告定向：配置广告 → 验证正确展示
+- 备份恢复：备份 → 删除数据 → 恢复 → 验证
 
-### Performance Tests
+### 性能测试
 
-- Page load time: < 1.5s FCP, < 2.5s LCP
-- PDF processing: 100-page PDF in < 60 seconds
-- SSG generation: 1000 manuals in < 5 minutes
+- 页面加载时间：FCP < 1.5s，LCP < 2.5s
+- 文档处理：100 页 PDF < 60 秒
+- SSG 生成：1000 本手册 < 5 分钟
+- 搜索响应：前端搜索 < 100ms
 
-### SEO Tests
+### SEO 测试
 
-- Google Rich Results Test: Schema.org validation
-- Lighthouse SEO audit: Score > 90
-- Mobile-friendly test: Pass
+- Google 富媒体结果测试：Schema.org 验证
+- Lighthouse SEO 审计：分数 > 90
+- 移动端友好测试：通过
 
 ---
 
-## Deployment Architecture
+## 部署架构
 
 ```mermaid
 flowchart LR
-    subgraph "Production Server"
-        A[Nginx] --> B[Static Files - public/]
-        A --> C[Node.js Admin API - :3000]
+    subgraph "生产服务器"
+        A[Nginx] --> B[静态文件 - public/]
+        A --> C[Node.js 管理后台 API - :3000]
         D[PostgreSQL] --> C
         E[uploads/] --> C
+        F[backups/] --> C
     end
 
-    F[Admin] --> A
-    G[Visitor] --> A
+    G[管理员] --> A
+    H[访客] --> A
 ```
 
-### Nginx Configuration
+### Nginx 配置
 
 ```nginx
 server {
@@ -617,20 +785,31 @@ server {
     server_name example.com;
     root /var/www/manual-viewer/public;
 
-    # Serve static files
+    # 安全头
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # 提供静态文件
     location / {
         try_files $uri $uri/ =404;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
-    # Images with long cache
+    # 图片长期缓存
     location /images/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
-    # Admin API proxy
+    # 搜索索引
+    location /data/ {
+        expires 1h;
+        add_header Cache-Control "public";
+    }
+
+    # 管理后台 API 代理
     location /api/ {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -638,12 +817,12 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # Admin panel
+    # 管理后台面板
     location /admin {
         proxy_pass http://127.0.0.1:3000;
     }
 
-    # Statistics endpoint (lightweight)
+    # 统计记录端点
     location /stats/record {
         proxy_pass http://127.0.0.1:3000;
     }
@@ -652,55 +831,115 @@ server {
 
 ---
 
-## Security Considerations
+## 安全考量
 
-1. **Admin Authentication**:
-   - Password stored as bcrypt hash (cost factor 12)
-   - Session token: 256-bit random, hashed in database
-   - HTTPS required for admin panel
+### 管理员认证
 
-2. **Input Validation**:
-   - All user inputs sanitized
-   - PDF files scanned for malicious content
-   - File type validation by magic bytes
+- 密码使用 bcrypt 哈希存储（成本因子 12）
+- 会话令牌：256 位随机数，数据库中存储哈希值
+- 管理后台需要 HTTPS
+- 会话 ID 每次请求重新生成
+- 敏感操作需要重新认证
 
-3. **Rate Limiting**:
-   - Admin login: 5 attempts per minute per IP
-   - API endpoints: 100 requests per minute per IP
-   - Statistics recording: 10 requests per second per IP
+### 输入验证
 
-4. **Content Security**:
-   - Watermark overlay on all images
-   - Right-click disabled on images
-   - No direct PDF download links
+- 所有用户输入进行消毒处理
+- 文档文件扫描恶意内容
+- 通过魔术字节验证文件类型
+- 限制文件上传大小（200MB）
 
----
+### 频率限制
 
-## Performance Optimization
+- 管理员登录：每个 IP 每分钟 5 次
+- API 端点：每个 IP 每分钟 100 次
+- 统计记录：每个 IP 每秒 10 次
 
-1. **Static Site Benefits**:
-   - No database queries for public pages
-   - CDN-ready (all static files)
-   - Minimal server resource usage
+### 内容安全
 
-2. **Image Optimization**:
-   - WebP format with 80% quality
-   - Responsive images with srcset
-   - Lazy loading for below-fold images
+- 所有图片添加水印覆盖层
+- 图片禁用右键菜单
+- 不提供文档直接下载链接
+- HTML 中不包含原始文档 URL
 
-3. **Critical CSS Inlining**:
-   - Above-fold styles inlined
-   - Non-critical styles loaded async
+### 安全头配置
 
-4. **Preconnect Hints**:
-   - `<link rel="preconnect" href="https://pagead2.googlesyndication.com">`
+- `X-Frame-Options: SAMEORIGIN`
+- `X-Content-Type-Options: nosniff`
+- `X-XSS-Protection: 1; mode=block`
+- `Content-Security-Policy` (根据需要配置)
 
 ---
 
-## References
+## 性能优化
 
-[^1]: (File) - index.html - Homepage design reference
-[^2]: (File) - code (10).html - Page viewer design reference
-[^3]: (Website) - [Google AdSense Policies](https://support.google.com/adsense/answer/48182)
-[^4]: (Website) - [Schema.org Article](https://schema.org/Article)
-[^5]: (Website) - [Web.dev Performance](https://web.dev/performance/)
+### 静态站点优势
+
+- 公开页面无需数据库查询
+- 可部署到 CDN（所有静态文件）
+- 服务器资源占用极低
+
+### 图片优化
+
+- WebP 格式，80% 质量
+- 响应式图片使用 srcset
+- 首屏以下图片懒加载
+- 最小 150 DPI 输出质量
+
+### 关键 CSS 内联
+
+- 首屏样式内联
+- 非关键样式异步加载
+
+### 预连接提示
+
+- `<link rel="preconnect" href="https://cpro.baidustatic.com">`
+- `<link rel="preconnect" href="https://pagead2.googlesyndication.com">`
+
+### 搜索索引优化
+
+- 索引文件按需分块加载
+- 大于 5MB 时分块压缩
+- 使用 Web Worker 执行搜索
+
+---
+
+## 备份策略
+
+### 自动备份
+
+- 每周日凌晨 3:00 自动执行
+- 备份内容：数据库 + 图片目录
+- 保留最近 4 周的备份
+
+### 备份文件命名
+
+```
+backup-YYYYMMDD-HHMMSS/
+├── database.sql.gz
+├── images.tar.gz
+└── manifest.json
+```
+
+### 备份存储
+
+- 本地存储：`/var/backups/manual-viewer/`
+- 可选：同步到云存储（OSS/S3）
+
+### 恢复流程
+
+1. 解压数据库备份并导入
+2. 解压图片目录到正确位置
+3. 重新生成静态页面
+4. 重新生成搜索索引
+
+---
+
+## 参考资料
+
+[^1]: (文件) - index.html - 首页设计参考
+[^2]: (文件) - code (10).html - 页面浏览设计参考
+[^3]: (网站) - [百度联盟规范](https://union.baidu.com/)
+[^4]: (网站) - [Schema.org Article](https://schema.org/Article)
+[^5]: (网站) - [Web.dev 性能指南](https://web.dev/performance/)
+[^6]: (网站) - [pdf2pic 文档](https://github.com/yakovmeister/pdf2pic)
+[^7]: (网站) - [LibreOffice 命令行](https://www.libreoffice.org/)
