@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industrial Manuals Online - Air Compressor & Vacuum Equipment Guides</title>
+    <style>
+        :root {
+            --primary-color: #0056b3; /* 工业蓝 */
+            --secondary-color: #f4f7f6; /* 浅灰背景 */
+            --text-dark: #333;
+            --text-light: #666;
+            --border-color: #e1e4e8;
+            --white: #ffffff;
+            --ad-bg: #f0f0f0;
+            --ad-border: #dcdcdc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-dark);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* 通用广告位样式 */
+        .ad-placeholder {
+            background-color: var(--ad-bg);
+            border: 1px dashed var(--ad-border);
+            color: #999;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px auto;
+            text-transform: uppercase;
+            font-weight: bold;
+            position: relative;
+        }
+        .ad-placeholder::after {
+            content: "Advertisement";
+        }
+        .ad-top { width: 728px; height: 90px; max-width: 100%; }
+        .ad-sidebar { width: 300px; height: 600px; max-width: 100%; }
+        .ad-content { width: 336px; height: 280px; margin: 20px 0; }
+        .ad-bottom { width: 728px; height: 90px; max-width: 100%; }
+
+        /* Header */
+        header {
+            background-color: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 0;
+        }
+        .container {
+            width: 1200px;
+            margin: 0 auto;
+            max-width: 95%;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-links a {
+            margin-left: 20px;
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+        
+        /* 顶部广告 */
+        .ad-top-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
+            color: var(--white);
+            padding: 40px 0;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .hero p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        .search-box {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            background: var(--white);
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .search-box input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+        }
+        .search-box button {
+            background-color: #ff9800;
+            color: var(--white);
+            border: none;
+            padding: 0 30px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .search-box button:hover {
+            background-color: #e68900;
+        }
+
+        /* Main Layout Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 260px 1fr 260px; /* 左侧栏 - 内容 - 右侧栏 */
+            gap: 20px;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        /* Sidebars */
+        aside {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .widget {
+            background: var(--white);
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        .widget h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+        .brand-list {
+            list-style: none;
+        }
+        .brand-list li {
+            margin-bottom: 8px;
+        }
+        .brand-list a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+        .brand-list a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        /* Center Content */
+        .content-area {
+            min-width: 0; /* 防止 grid 溢出 */
+        }
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-left: 10px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .doc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .doc-card {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+        }
+        .doc-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .doc-thumb {
+            height: 140px;
+            background-color: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #777;
+            position: relative;
+            overflow: hidden;
+        }
+        .doc-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+        }
+        .doc-info {
+            padding: 12px;
+        }
+        .doc-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            height: 40px;
+        }
+        .doc-meta {
+            font-size: 12px;
+            color: var(--text-light);
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        .brand-tag {
+            background-color: #e3f2fd;
+            color: var(--primary-color);
+            padding: 2px 5px;
+            border-radius: 2px;
+            font-size: 11px;
+        }
+
+        .recent-list {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        .recent-item {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .recent-item:last-child {
+            border-bottom: none;
+        }
+        .recent-thumb {
+            width: 60px;
+            height: 80px;
+            background-color: #eee;
+            flex-shrink: 0;
+        }
+        .recent-info h4 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .btn-view {
+            display: inline-block;
+            margin-top: 5px;
+            font-size: 12px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #2c3e50;
+            color: #bdc3c7;
+            padding: 40px 0 20px;
+            margin-top: auto;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .footer-col h4 {
+            color: var(--white);
+            margin-bottom: 15px;
+        }
+        .footer-col ul {
+            list-style: none;
+        }
+        .footer-col ul li {
+            margin-bottom: 8px;
+        }
+        .footer-col a {
+            color: #bdc3c7;
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .footer-col a:hover {
+            color: var(--white);
+        }
+        .copyright {
+            text-align: center;
+            border-top: 1px solid #3e5871;
+            padding-top: 20px;
+            font-size: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 200px 1fr;
+            }
+            .sidebar-right {
+                display: none; /* 平板隐藏右侧栏或移到底部 */
+            }
+        }
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .sidebar-left {
+                display: none;
+            }
+            .header-top {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .nav-links a {
+                margin: 0 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="container header-top">
+            <a href="#" class="logo">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                ManualLib Pro
+            </a>
+            <nav class="nav-links">
+                <a href="#">Home</a>
+                <a href="#">Brands</a>
+                <a href="#">Categories</a>
+                <a href="#">About Us</a>
+                <a href="#">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Top Ad Banner -->
+    <div class="ad-top-container">
+        <div class="ad-placeholder ad-top"></div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>Industrial Equipment Manuals & Parts Lists</h1>
+            <p>The largest online database for Air Compressors, Vacuum Pumps, and Gas Equipment Documentation.</p>
+            <div class="search-box">
+                <input type="text" placeholder="Enter brand, model (e.g., Atlas Copco GA 37)...">
+                <button>Search</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content Area -->
+    <div class="container">
+        <div class="main-grid">
+            
+            <!-- Left Sidebar -->
+            <aside class="sidebar-left">
+                <div class="widget">
+                    <h3>Popular Brands</h3>
+                    <ul class="brand-list">
+                        <li><a href="#">Atlas Copco (1,204)</a></li>
+                        <li><a href="#">Ingersoll Rand (985)</a></li>
+                        <li><a href="#">Sullair (756)</a></li>
+                        <li><a href="#">Gardner Denver (643)</a></li>
+                        <li><a href="#">Kaeser Kompressoren (521)</a></li>
+                        <li><a href="#">Chicago Pneumatic (432)</a></li>
+                        <li><a href="#">Quincy (390)</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Left Ad Unit -->
+                <div class="ad-placeholder ad-sidebar"></div>
+
+                <div class="widget">
+                    <h3>Categories</h3>
+                    <ul class="brand-list">
+                        <li><a href="#">Rotary Screw Compressors</a></li>
+                        <li><a href="#">Piston Compressors</a></li>
+                        <li><a href="#">Vacuum Pumps</a></li>
+                        <li><a href="#">Dryers & Filters</a></li>
+                        <li><a href="#">Generators</a></li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Center Content -->
+            <main class="content-area">
+                
+                <h2 class="section-title">Featured Manuals</h2>
+
+                <!-- Content Ad (In-Feed) -->
+                <div class="ad-placeholder ad-content"></div>
+
+                <div class="doc-grid">
+                    <!-- Card 1 -->
+                    <a href="#" class="doc-card">
+                        <div class="doc-thumb">
+                            <img src="https://placehold.co/300x400/EEE/31343C?text=Atlas+Copco+GA37" alt="Manual Cover">
+                        </div>
+                        <div class="doc-info">
+                            <div class="doc-title">Atlas Copco GA 37 Compressor Operation Manual</div>
+                            <div class="doc-meta">
+                                <span class="brand-tag">Atlas Copco</span>
+                                <span>64 Pages</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Card 2 -->
+                    <a href="#" class="doc-card">
+                        <div class="doc-thumb">
+                            <img src="https://placehold.co/300x400/EEE/31343C?text=Ingersoll+Rand+XH" alt="Manual Cover">
+                        </div>
+                        <div class="doc-info">
+                            <div class="doc-title">Ingersoll Rand XH 2000 Series Service Manual</div>
+                            <div class="doc-meta">
+                                <span class="brand-tag">Ingersoll Rand</span>
+                                <span>120 Pages</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Card 3 -->
+                    <a href="#" class="doc-card">
+                        <div class="doc-thumb">
+                            <img src="https://placehold.co/300x400/EEE/31343C?text=Sullair+3700" alt="Manual Cover">
+                        </div>
+                        <div class="doc-info">
+                            <div class="doc-title">Sullair 3700 Portable Compressor Parts List</div>
+                            <div class="doc-meta">
+                                <span class="brand-tag">Sullair</span>
+                                <span>45 Pages</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Card 4 -->
+                    <a href="#" class="doc-card">
+                        <div class="doc-thumb">
+                            <img src="https://placehold.co/300x400/EEE/31343C?text=Kaeser+BSD" alt="Manual Cover">
+                        </div>
+                        <div class="doc-info">
+                            <div class="doc-title">Kaeser BSD 52 Rotary Screw Compressor Manual</div>
+                            <div class="doc-meta">
+                                <span class="brand-tag">Kaeser</span>
+                                <span>88 Pages</span>
+                            </div>
+                        </div>
+                    </a>
+
+                     <!-- Card 5 -->
+                     <a href="#" class="doc-card">
+                        <div class="doc-thumb">
+                            <img src="https://placehold.co/300x400/EEE/31343C?text=Quincy+QR" alt="Manual Cover">
+                        </div>
+                        <div class="doc-info">
+                            <div class="doc-title">Quincy QRB 20-30 Direct Drive Manual</div>
+                            <div class="doc-meta">
+                                <span class="brand-tag">Quincy</span>
+                                <span>32 Pages</span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- Card 6 -->
+                    <a href="#" class="doc-card">
+                        <div class="doc-thumb">
+                            <img src="https://placehold.co/300x400/EEE/31343C?text=Leybold+Vacuum" alt="Manual Cover">
+                        </div>
+                        <div class="doc-info">
+                            <div class="doc-title">Leybold TRIVAC D Vacuum Pump Instructions</div>
+                            <div class="doc-meta">
+                                <span class="brand-tag">Leybold</span>
+                                <span>56 Pages</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <h2 class="section-title" style="margin-top: 40px;">Latest Uploads</h2>
+                
+                <div class="recent-list">
+                    <div class="recent-item">
+                        <div class="recent-thumb" style="background: #eee;"></div>
+                        <div class="recent-info">
+                            <h4>Chicago Pneumatic QRS 20 Parts Book</h4>
+                            <span class="brand-tag">Chicago Pneumatic</span>
+                            <div style="font-size: 12px; color: #666; margin-top: 5px;">Uploaded: 2 hours ago</div>
+                            <a href="#" class="btn-view">Read Online &rarr;</a>
+                        </div>
+                    </div>
+                    <div class="recent-item">
+                        <div class="recent-thumb" style="background: #eee;"></div>
+                        <div class="recent-info">
+                            <h4>Gardner Denver Electra-Screw 100 Operator Manual</h4>
+                            <span class="brand-tag">Gardner Denver</span>
+                            <div style="font-size: 12px; color: #666; margin-top: 5px;">Uploaded: 5 hours ago</div>
+                            <a href="#" class="btn-view">Read Online &rarr;</a>
+                        </div>
+                    </div>
+                    <div class="recent-item">
+                        <div class="recent-thumb" style="background: #eee;"></div>
+                        <div class="recent-info">
+                            <h4>CompAir L03 Lubricated Screw Compressor Manual</h4>
+                            <span class="brand-tag">CompAir</span>
+                            <div style="font-size: 12px; color: #666; margin-top: 5px;">Uploaded: 1 day ago</div>
+                            <a href="#" class="btn-view">Read Online &rarr;</a>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- Right Sidebar -->
+            <aside class="sidebar-right">
+                <div class="widget">
+                    <h3>Top Rated</h3>
+                    <ul class="brand-list">
+                        <li><a href="#">Atlas Copco XAHS 137 Manual</a> (4.9/5)</li>
+                        <li><a href="#">Sullair 825E Manual</a> (4.8/5)</li>
+                        <li><a href="#">Doosan Portable Power XP825</a> (4.8/5)</li>
+                    </ul>
+                </div>
+
+                <!-- Right Ad Unit -->
+                <div class="ad-placeholder ad-sidebar"></div>
+
+                <div class="widget" style="font-size: 13px; color: #666; background: #e3f2fd; border: none;">
+                    <h4 style="color: #0056b3; margin-bottom: 10px;">Community Notice</h4>
+                    <p>We are constantly updating our database. If you cannot find the manual you need, please use the request form.</p>
+                    <br>
+                    <button style="width: 100%; padding: 8px; background: #0056b3; color: white; border: none; cursor: pointer;">Request Manual</button>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+
+    <!-- Bottom Ad Banner -->
+    <div class="ad-top-container">
+        <div class="ad-placeholder ad-bottom"></div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h4>About ManualLib Pro</h4>
+                    <p style="font-size: 13px; line-height: 1.5;">The premier online resource for industrial equipment documentation. We provide free access to operation manuals, parts lists, and service guides for engineers and technicians worldwide.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#">Home</a></li>
+                        <li><a href="#">Submit a Manual</a></li>
+                        <li><a href="#">Request a Manual</a></li>
+                        <li><a href="#">Sitemap</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Popular Brands</h4>
+                    <ul>
+                        <li><a href="#">Atlas Copco</a></li>
+                        <li><a href="#">Ingersoll Rand</a></li>
+                        <li><a href="#">Sullair</a></li>
+                        <li><a href="#">Kaeser</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">DMCA Disclaimer</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                &copy; 2023 ManualLib Pro. All rights reserved. <br>
+                <span style="opacity: 0.6;">We do not host any PDF files. All documents are properties of their respective owners.</span>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
