@@ -1,266 +1,326 @@
-# Requirements Document: Online Manual Viewer
+# 需求文档：在线文档浏览网站
 
-## Introduction
+## 项目概述
 
-在线文档浏览网站系统，支持 PDF 手册拆分为单页图片、分页浏览、后台管理、广告管理等功能。系统面向单人管理模式设计，性能优先，无第三方注册及评论功能，符合国际 Google AdSense 手册站标准。
+在线文档浏览网站系统，面向国内用户，支持 PDF/PPT/Word 文档上传、自动拆分为单页图片、分页浏览、后台管理、广告管理等功能。系统采用静态站点生成架构，性能优先，稳定运行，便于维护。
 
-核心业务流程：**PDF 上传 → 自动拆图 → 生成页面 → 分页浏览 → 广告展示**
+**预估规模**：文档存储 100GB，支持 PDF、PPT、Word 多种格式
 
-## Glossary
-
-- **Manual（手册）**: 一份完整的 PDF 文档，如设备说明书、维修手册等
-- **Page（页面）**: 手册的单页图片，由 PDF 拆分生成
-- **Ad Slot（广告位）**: 预留的广告展示区域，符合 AdSense 标准
-- **Admin（管理员）**: 系统唯一的管理者，负责内容管理和广告配置
-- **Visitor（访客）**: 匿名浏览网站的用户，无需注册
+**核心业务流程**：**文档上传 → 自动拆图 → 生成页面 → 分页浏览 → 广告展示**
 
 ---
 
-## Requirements
+## 术语表
 
-### R1: PDF 上传与拆分
+| 术语 | 定义 |
+|------|------|
+| 手册（Manual） | 一份完整的文档，如设备说明书、维修手册、PPT演示文稿等 |
+| 页面（Page） | 手册的单页图片，由文档拆分生成 |
+| 广告位（Ad Slot） | 预留的广告展示区域，符合国内广告联盟标准 |
+| 管理员（Admin） | 系统唯一的管理者，负责内容管理和广告配置 |
+| 访客（Visitor） | 匿名浏览网站的用户，无需注册 |
+| SSG | 静态站点生成（Static Site Generation） |
 
-**User Story:** AS Admin, I want to upload PDF files and have them automatically split into individual page images, so that each page becomes a standalone web page.
+---
 
-#### Acceptance Criteria
+## 功能需求
 
-1. WHEN Admin uploads a PDF file, the system SHALL validate the file format and size (max 100MB)
-2. WHEN PDF upload completes, the system SHALL automatically extract each page as a high-quality image (WebP/JPEG format)
-3. WHILE PDF processing is in progress, the system SHALL display a progress indicator to the Admin
-4. IF PDF processing fails, the system SHALL display a specific error message and allow retry
-5. WHEN PDF processing completes, the system SHALL generate a unique manual ID and store metadata (title, brand, model, page count, upload date)
+### R1: 文档上传与拆分
+
+**用户故事：** 作为管理员，我希望上传 PDF/PPT/Word 文件后自动拆分为单页图片，以便每页成为一个独立的网页。
+
+**验收标准：**
+
+1. 当管理员上传文档时，系统应验证文件格式（支持 PDF、PPT、PPTX、DOC、DOCX）和大小（单文件最大 200MB）
+2. 当文档上传完成后，系统应自动将每页提取为 WebP 格式图片
+3. 当文档处理进行中时，系统应向管理员显示处理进度
+4. 如果文档处理失败，系统应显示具体错误信息并允许重试
+5. 当文档处理完成后，系统应生成唯一的手册ID并存储元数据（标题、品牌、型号、页数、上传日期、文件类型）
 
 ---
 
 ### R2: 手册元数据管理
 
-**User Story:** AS Admin, I want to input manual metadata (brand, model, category, description), so that pages have proper SEO titles and descriptions.
+**用户故事：** 作为管理员，我希望输入手册元数据（品牌、型号、分类、描述），以便页面具有正确的 SEO 标题和描述。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN Admin creates a new manual, the system SHALL require fields: brand name, model number, category, and manual title
-2. WHEN Admin inputs metadata, the system SHALL automatically generate SEO-friendly page titles following format: "{Manual Title} | Page {N}"
-3. WHEN Admin inputs metadata, the system SHALL automatically generate page descriptions following format: "Page {N} of {Model} {category}, including {section summary}..."
-4. WHEN Admin saves metadata, the system SHALL create a slug-based URL pattern: `/manual/{brand}/{model}/page-{n}`
-5. IF manual title exceeds 60 characters, the system SHALL truncate and add ellipsis for SEO compliance
+1. 当管理员创建新手册时，系统应要求填写：品牌名称、型号、分类、手册标题
+2. 当管理员输入元数据时，系统应自动生成 SEO 友好的页面标题，格式：`{手册标题} | 第{N}页`
+3. 当管理员输入元数据时，系统应自动生成页面描述，格式：`{型号}{分类}第{N}页，包含{章节摘要}...`
+4. 当管理员保存元数据时，系统应创建基于 slug 的 URL 模式：`/manual/{品牌}/{型号}/page-{n}`
+5. 如果手册标题超过 60 个字符，系统应截断并添加省略号以符合 SEO 规范
 
 ---
 
 ### R3: 单页浏览与导航
 
-**User Story:** AS Visitor, I want to browse manual pages one at a time with easy navigation, so that I can read the content clearly on any device.
+**用户故事：** 作为访客，我希望逐页浏览手册内容，并在任何设备上清晰阅读。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN Visitor opens a manual page, the system SHALL display a single page image centered in the content area
-2. WHEN page loads, the system SHALL apply a watermark overlay to protect content
-3. WHILE viewing a page, the system SHALL display pagination controls (Previous, Page X of Y, Next)
-4. WHEN Visitor clicks "Next Page", the system SHALL navigate to the next page URL without full page reload (AJAX/image swap preferred for performance)
-5. WHEN Visitor is on the first page, the system SHALL disable the "Previous" button
-6. WHEN Visitor is on the last page, the system SHALL disable the "Next" button
-7. WHILE page image is loading, the system SHALL display a loading placeholder
+1. 当访客打开手册页面时，系统应在内容区域居中显示单页图片
+2. 当页面加载时，系统应应用水印覆盖层以保护内容
+3. 当浏览页面时，系统应显示分页控件（上一页、第X页/共Y页、下一页）
+4. 当访客点击"下一页"时，系统应导航到下一页 URL
+5. 当访客位于第一页时，系统应禁用"上一页"按钮
+6. 当访客位于最后一页时，系统应禁用"下一页"按钮
+7. 当页面图片加载中时，系统应显示加载占位符
 
 ---
 
 ### R4: SEO 优化页面结构
 
-**User Story:** AS System Owner, I want each page to have optimized SEO elements, so that search engines can index the content properly and drive organic traffic.
+**用户故事：** 作为网站所有者，我希望每页都有优化的 SEO 元素，以便搜索引擎正确索引内容并带来自然流量。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN generating a page, the system SHALL set `<title>` to format: "Model ABC-123 Service Manual | Page 1"
-2. WHEN generating a page, the system SHALL set `<meta name="description">` to format: "Page 1 of ABC-123 service manual, including specifications..."
-3. WHEN generating a page, the system SHALL include Open Graph tags (og:title, og:description, og:image, og:url)
-4. WHEN generating a page, the system SHALL include structured data (JSON-LD) for Article/HowTo schema
-5. WHEN generating a page, the system SHALL include canonical URL pointing to the current page
-6. WHEN generating a page, the system SHALL include breadcrumbs navigation with schema markup
+1. 当生成页面时，系统应设置 `<title>` 格式：`ABC-123型服务手册 | 第1页`
+2. 当生成页面时，系统应设置 `<meta name="description">` 格式：`ABC-123服务手册第1页，包含技术规格...`
+3. 当生成页面时，系统应包含 Open Graph 标签（og:title、og:description、og:image、og:url）
+4. 当生成页面时，系统应包含结构化数据（JSON-LD）用于 Article/HowTo 模式
+5. 当生成页面时，系统应包含指向当前页面的规范 URL
+6. 当生成页面时，系统应包含带 Schema 标记的面包屑导航
 
 ---
 
 ### R5: 广告位布局
 
-**User Story:** AS System Owner, I want standardized AdSense-compliant ad placements on every page, so that I can monetize traffic effectively.
+**用户故事：** 作为网站所有者，我希望每页都有符合标准的广告位，以便有效变现流量。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN displaying a manual page, the system SHALL include a top banner ad slot (728x90 or responsive)
-2. WHEN displaying a manual page, the system SHALL include a left sidebar ad slot (300x600)
-3. WHEN displaying a manual page, the system SHALL include a right sidebar ad slot (300x600)
-4. WHEN displaying a manual page, the system SHALL include a bottom banner ad slot (728x90)
-5. IF screen width is less than 1024px, the system SHALL hide the right sidebar ad slot
-6. IF screen width is less than 768px, the system SHALL hide both sidebar ad slots and show only top/bottom banners
-7. WHEN ad slot is empty (no ad configured), the system SHALL display a placeholder with "Advertisement" label
+1. 当显示手册页面时，系统应包含顶部横幅广告位（728x90 或响应式）
+2. 当显示手册页面时，系统应包含左侧边栏广告位（300x600）
+3. 当显示手册页面时，系统应包含右侧边栏广告位（300x600）
+4. 当显示手册页面时，系统应包含底部横幅广告位（728x90）
+5. 如果屏幕宽度小于 1024px，系统应隐藏右侧边栏广告位
+6. 如果屏幕宽度小于 768px，系统应隐藏两侧边栏广告位，仅显示顶部/底部横幅
+7. 当广告位为空（未配置广告）时，系统应显示带"广告"标签的占位符
 
 ---
 
 ### R6: 响应式布局
 
-**User Story:** AS Visitor, I want the website to adapt to my screen size, so that I can browse manuals comfortably on desktop, tablet, or mobile.
+**用户故事：** 作为访客，我希望网站适应我的屏幕尺寸，以便在桌面、平板或手机上舒适浏览。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN screen width is greater than 1200px, the system SHALL display three-column layout (left sidebar, content, right sidebar)
-2. WHEN screen width is between 768px and 1200px, the system SHALL display two-column layout (left sidebar, content)
-3. WHEN screen width is less than 768px, the system SHALL display single-column layout (content only)
-4. WHEN displaying on mobile, the system SHALL ensure page image width does not exceed screen width
-5. WHEN displaying on mobile, the system SHALL provide swipe gesture support for page navigation
-6. WHEN displaying on any device, the system SHALL ensure minimum touch target size of 44x44 pixels for navigation buttons
+1. 当屏幕宽度大于 1200px 时，系统应显示三栏布局（左侧栏、内容、右侧栏）
+2. 当屏幕宽度在 768px 至 1200px 之间时，系统应显示两栏布局（左侧栏、内容）
+3. 当屏幕宽度小于 768px 时，系统应显示单栏布局（仅内容）
+4. 当在手机上显示时，系统应确保页面图片宽度不超过屏幕宽度
+5. 当在手机上显示时，系统应提供滑动手势支持进行翻页
+6. 当在任何设备上显示时，系统应确保导航按钮的最小触控目标尺寸为 44x44 像素
 
 ---
 
 ### R7: 后台管理面板
 
-**User Story:** AS Admin, I want a secure admin panel to manage manuals, pages, and ads, so that I can maintain the website efficiently.
+**用户故事：** 作为管理员，我希望有一个安全的后台面板来管理手册、页面和广告，以便高效维护网站。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN Admin accesses admin panel, the system SHALL require password authentication (single admin, no multi-user)
-2. WHEN Admin logs in successfully, the system SHALL create a session valid for 24 hours
-3. WHEN Admin session expires, the system SHALL redirect to login page
-4. WHEN Admin is in dashboard, the system SHALL display summary statistics (total manuals, total pages, total views)
-5. WHEN Admin manages manuals, the system SHALL provide CRUD operations (Create, Read, Update, Delete)
-6. WHEN Admin deletes a manual, the system SHALL prompt for confirmation and delete all associated pages
-7. WHEN Admin performs any action, the system SHALL log the action with timestamp
+1. 当管理员访问后台面板时，系统应要求密码认证（单人管理，无多用户）
+2. 当管理员成功登录时，系统应创建有效期为 24 小时的会话
+3. 当管理员会话过期时，系统应重定向到登录页面
+4. 当管理员在仪表盘时，系统应显示汇总统计（总手册数、总页数、总访问量）
+5. 当管理员管理手册时，系统应提供增删改查操作
+6. 当管理员删除手册时，系统应提示确认并删除所有关联页面和图片文件
+7. 当管理员执行任何操作时，系统应记录带时间戳的操作日志
 
 ---
 
 ### R8: 广告管理
 
-**User Story:** AS Admin, I want to manage ad configurations, so that I can control which ads appear on which pages.
+**用户故事：** 作为管理员，我希望管理广告配置，以便控制哪些广告出现在哪些页面。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN Admin accesses ad management, the system SHALL display all ad slots with their current configuration
-2. WHEN Admin configures an ad slot, the system SHALL accept AdSense code snippet or custom HTML
-3. WHEN Admin sets ad configuration, the system SHALL allow page-level targeting (specific manuals or pages)
-4. WHEN Admin saves ad configuration, the system SHALL apply changes immediately without page cache issues
-5. WHEN Admin wants to test ads, the system SHALL provide a preview mode
-6. IF ad code is invalid, the system SHALL display a validation error
+1. 当管理员访问广告管理时，系统应显示所有广告位及其当前配置
+2. 当管理员配置广告位时，系统应接受百度联盟、360联盟、Google AdSense 代码片段或自定义 HTML
+3. 当管理员设置广告配置时，系统应允许页面级定向（特定手册或页面）
+4. 当管理员保存广告配置时，系统应立即应用更改并重新生成相关静态页面
+5. 如果广告代码无效，系统应显示验证错误
 
 ---
 
 ### R9: 性能优化
 
-**User Story:** AS System Owner, I want the website to load quickly, so that visitors have a good experience and bounce rate stays low.
+**用户故事：** 作为网站所有者，我希望网站快速加载，以便访客有良好体验且跳出率低。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN page is requested, the system SHALL serve static HTML files (pre-generated, not dynamically rendered)
-2. WHEN serving images, the system SHALL use WebP format with JPEG fallback
-3. WHEN serving images, the system SHALL implement lazy loading for below-fold images
-4. WHEN serving assets, the system SHALL set appropriate cache headers (1 year for static assets)
-5. WHEN serving pages, the system SHALL enable gzip/brotli compression
-6. WHEN page loads, the system SHALL achieve First Contentful Paint (FCP) under 1.5 seconds
-7. WHEN page loads, the system SHALL achieve Largest Contentful Paint (LCP) under 2.5 seconds
+1. 当请求页面时，系统应提供预生成的静态 HTML 文件（非动态渲染）
+2. 当提供图片时，系统应使用 WebP 格式
+3. 当提供图片时，系统应对首屏以下图片实现懒加载
+4. 当提供静态资源时，系统应设置适当的缓存头（静态资源缓存 1 年）
+5. 当提供页面时，系统应启用 gzip/brotli 压缩
+6. 当页面加载时，系统应实现首次内容绘制（FCP）低于 1.5 秒
+7. 当页面加载时，系统应实现最大内容绘制（LCP）低于 2.5 秒
 
 ---
 
 ### R10: 访问统计
 
-**User Story:** AS Admin, I want to view access statistics, so that I can understand traffic patterns and optimize content.
+**用户故事：** 作为管理员，我希望查看访问统计，以便了解流量模式并优化内容。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN a page is viewed, the system SHALL record a page view with timestamp, manual ID, page number
-2. WHEN recording page views, the system SHALL exclude admin's own IP address (configurable)
-3. WHEN Admin views statistics, the system SHALL display daily/weekly/monthly page view charts
-4. WHEN Admin views statistics, the system SHALL display top-viewed manuals and pages
-5. WHEN Admin views statistics, the system SHALL display traffic sources (direct, search, referral)
-6. WHEN storing statistics, the system SHALL aggregate data to reduce storage (raw data retained for 30 days)
+1. 当页面被浏览时，系统应记录访问日志（时间戳、手册ID、页码）
+2. 当记录访问时，系统应排除管理员自身的 IP 地址（可配置）
+3. 当管理员查看统计时，系统应显示日/周/月访问量图表
+4. 当管理员查看统计时，系统应显示热门手册和页面排行
+5. 当管理员查看统计时，系统应显示流量来源（直接访问、搜索引擎、外链）
+6. 当存储统计数据时，系统应聚合数据以减少存储（原始数据保留 30 天）
 
 ---
 
 ### R11: 面包屑导航
 
-**User Story:** AS Visitor, I want to see where I am in the site structure, so that I can navigate easily and understand the content hierarchy.
+**用户故事：** 作为访客，我希望看到我在网站结构中的位置，以便轻松导航并理解内容层次。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN displaying a manual page, the system SHALL show breadcrumbs: Home > Brand > Model > Page N
-2. WHEN Visitor clicks "Home", the system SHALL navigate to the homepage
-3. WHEN Visitor clicks a brand name, the system SHALL navigate to the brand listing page
-4. WHEN Visitor clicks a model name, the system SHALL navigate to the first page of that manual
-5. WHEN generating breadcrumbs, the system SHALL include Schema.org BreadcrumbList markup
+1. 当显示手册页面时，系统应显示面包屑：首页 > 品牌 > 型号 > 第N页
+2. 当访客点击"首页"时，系统应导航到网站首页
+3. 当访客点击品牌名称时，系统应导航到品牌列表页
+4. 当访客点击型号名称时，系统应导航到该手册的第一页
+5. 当生成面包屑时，系统应包含 Schema.org BreadcrumbList 标记
 
 ---
 
 ### R12: 目录导航
 
-**User Story:** AS Visitor, I want to see a table of contents in the sidebar, so that I can quickly jump to relevant sections.
+**用户故事：** 作为访客，我希望在侧边栏看到目录，以便快速跳转到相关章节。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN displaying a manual page, the system SHALL show a table of contents (TOC) in the left sidebar
-2. WHEN Admin defines TOC, the system SHALL allow mapping sections to page ranges
-3. WHEN Visitor clicks a TOC entry, the system SHALL navigate to the first page of that section
-4. WHEN current page is within a section, the system SHALL highlight that TOC entry
-5. IF TOC is not defined for a manual, the system SHALL display page number links instead
+1. 当显示手册页面时，系统应在左侧边栏显示目录（TOC）
+2. 当管理员定义目录时，系统应允许将章节映射到页码范围
+3. 当访客点击目录条目时，系统应导航到该章节的第一页
+4. 当当前页面在某个章节内时，系统应高亮显示该目录条目
+5. 如果手册未定义目录，系统应显示页码链接列表代替
 
 ---
 
 ### R13: 内容保护
 
-**User Story:** AS System Owner, I want to protect manual content from easy downloading, so that content value is preserved.
+**用户故事：** 作为网站所有者，我希望保护手册内容不被轻易下载，以便保持内容价值。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN displaying a page, the system SHALL disable right-click context menu on images
-2. WHEN displaying a page, the system SHALL apply a transparent watermark overlay
-3. WHEN displaying a page, the system SHALL not provide a direct download link for PDF
-4. IF Visitor attempts to drag an image, the system SHALL prevent the drag action
-5. WHEN serving images, the system SHALL use lazy-loaded image tags without direct PDF URLs in HTML
+1. 当显示页面时，系统应在图片上禁用右键菜单
+2. 当显示页面时，系统应应用透明水印覆盖层
+3. 当显示页面时，系统不应提供 PDF/文档的直接下载链接
+4. 如果访客尝试拖拽图片，系统应阻止拖拽操作
+5. 当提供图片时，系统应使用懒加载图片标签，HTML 中不包含直接的文档 URL
 
 ---
 
 ### R14: 首页设计
 
-**User Story:** AS Visitor, I want to see a well-organized homepage, so that I can quickly find manuals I need.
+**用户故事：** 作为访客，我希望看到一个组织良好的首页，以便快速找到我需要的手册。
 
-#### Acceptance Criteria
+**验收标准：**
 
-1. WHEN Visitor opens the homepage, the system SHALL display a search box prominently
-2. WHEN Visitor opens the homepage, the system SHALL display popular brands with manual counts
-3. WHEN Visitor opens the homepage, the system SHALL display featured/recent manuals
-4. WHEN Visitor opens the homepage, the system SHALL display category listings
-5. WHEN Visitor uses search, the system SHALL provide autocomplete suggestions from manual titles
-
----
-
-### R15: 安全性
-
-**User Story:** AS System Owner, I want the admin panel to be secure, so that unauthorized access is prevented.
-
-#### Acceptance Criteria
-
-1. WHEN Admin attempts login, the system SHALL rate-limit attempts to 5 per minute per IP
-2. WHEN Admin enters wrong password 5 times, the system SHALL lock the IP for 15 minutes
-3. WHEN Admin session is active, the system SHALL regenerate session ID on each request
-4. WHEN Admin performs sensitive actions (delete, upload), the system SHALL require re-authentication
-5. WHEN serving pages, the system SHALL include security headers (X-Frame-Options, X-Content-Type-Options, CSP)
+1. 当访客打开首页时，系统应突出显示搜索框
+2. 当访客打开首页时，系统应显示热门品牌及其手册数量
+3. 当访客打开首页时，系统应显示推荐/最新手册
+4. 当访客打开首页时，系统应显示分类列表
+5. 当访客使用搜索时，系统应从手册标题中提供自动补全建议
 
 ---
 
-## Non-Functional Requirements
+### R15: 前端全文搜索
 
-### NFR1: Scalability
-- The system SHALL support at least 10,000 manuals with 1,000,000 total pages
-- The system SHALL handle 100 concurrent visitors without degradation
+**用户故事：** 作为访客，我希望在前端快速搜索手册，无需等待服务器响应。
 
-### NFR2: Availability
-- The system SHALL achieve 99.9% uptime
-- The system SHALL serve pages from CDN when available
+**验收标准：**
 
-### NFR3: Maintainability
-- The system SHALL use static site generation for public pages
-- The system SHALL separate admin panel from public-facing site
+1. 当网站加载时，系统应预加载搜索索引文件（JSON 格式）
+2. 当访客输入搜索关键词时，系统应实时过滤并显示匹配结果
+3. 当显示搜索结果时，系统应高亮显示匹配的关键词
+4. 当搜索索引过大（>5MB）时，系统应分块加载索引
+5. 当访客点击搜索结果时，系统应导航到对应手册的第一页
 
 ---
 
-## Out of Scope
+### R16: 安全性
 
-- User registration and login
-- Third-party comments (Disqus, etc.)
-- Social media login
-- PDF download feature
-- Multi-language support (initial version)
-- Payment/subscription system
+**用户故事：** 作为网站所有者，我希望后台面板安全，以便防止未授权访问。
+
+**验收标准：**
+
+1. 当管理员尝试登录时，系统应限制每个 IP 每分钟最多 5 次尝试
+2. 当管理员连续 5 次输入错误密码时，系统应锁定该 IP 15 分钟
+3. 当管理员会话活跃时，系统应在每次请求时重新生成会话 ID
+4. 当管理员执行敏感操作（删除、上传）时，系统应要求重新认证
+5. 当提供页面时，系统应包含安全头（X-Frame-Options、X-Content-Type-Options、CSP）
+
+---
+
+### R17: 数据备份
+
+**用户故事：** 作为管理员，我希望系统自动备份数据，以便在故障时恢复。
+
+**验收标准：**
+
+1. 当达到每周备份时间时，系统应自动执行数据库备份
+2. 当执行备份时，系统应同时备份图片文件目录
+3. 当备份完成时，系统应保留最近 4 周的备份文件
+4. 当备份失败时，系统应记录错误日志
+5. 当存储空间不足时，系统应自动删除最旧的备份文件
+
+---
+
+### R18: 多格式文档支持
+
+**用户故事：** 作为管理员，我希望上传 PDF、PPT、Word 多种格式文档，以便支持不同类型的资料。
+
+**验收标准：**
+
+1. 当管理员上传 PDF 文件时，系统应使用 pdf2pic 库拆分页面
+2. 当管理员上传 PPT/PPTX 文件时，系统应使用 LibreOffice 转换为图片
+3. 当管理员上传 DOC/DOCX 文件时，系统应使用 LibreOffice 转换为图片
+4. 当处理不同格式文档时，系统应统一输出 WebP 格式图片
+5. 当文档包含矢量图形时，系统应保持高分辨率输出（至少 150 DPI）
+
+---
+
+## 非功能需求
+
+### NFR1: 可扩展性
+
+- 系统应支持至少 10,000 本手册，总计 1,000,000 页
+- 系统应支持 100GB 的文档图片存储
+- 系统应处理 100 个并发访客而不降级
+
+### NFR2: 可用性
+
+- 系统应实现 99.5% 的正常运行时间
+- 静态页面应可通过任何标准 Web 服务器提供
+
+### NFR3: 可维护性
+
+- 系统应使用静态站点生成技术生成公开页面
+- 管理面板应与公开网站分离部署
+- 所有配置应通过环境变量或配置文件管理
+
+### NFR4: 兼容性
+
+- 系统应支持主流浏览器（Chrome、Firefox、Safari、Edge）的最新两个版本
+- 系统应在移动端浏览器上正常运行
+- 系统应符合 WCAG 2.1 AA 级无障碍标准的最低要求
+
+---
+
+## 不在范围内
+
+- 用户注册和登录
+- 第三方评论系统
+- 社交媒体登录
+- 文档下载功能
+- 多语言支持（初始版本）
+- 支付/订阅系统
+- 在线编辑功能
