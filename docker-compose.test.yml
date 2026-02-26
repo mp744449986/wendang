@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: manual-api-test
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - JWT_SECRET=test-jwt-secret-key-for-development-32chars
+      - ADMIN_PASSWORD=admin123
+    volumes:
+      - ./public:/app/public
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:alpine
+    container_name: manual-frontend-test
+    ports:
+      - "8080:80"
+    volumes:
+      - ./admin-frontend/dist:/usr/share/nginx/html/admin:ro
+      - ./public:/usr/share/nginx/html:ro
+    depends_on:
+      - api
+    restart: unless-stopped
