@@ -20,7 +20,25 @@
 
 ## 快速开始
 
-### 使用 Docker Compose（推荐）
+### 一键部署（推荐）
+
+```bash
+# 克隆项目
+git clone https://github.com/your-username/wendang.git
+cd wendang
+
+# 执行一键部署脚本
+sudo bash scripts/deploy.sh
+```
+
+部署脚本会自动：
+- 检查并安装 Docker
+- 生成安全密钥和密码
+- 配置环境变量
+- 构建并启动服务
+- 配置防火墙
+
+### 使用 Docker Compose
 
 ```bash
 # 复制环境配置
@@ -34,6 +52,28 @@ docker-compose up -d
 
 # 查看日志
 docker-compose logs -f
+```
+
+### 部署脚本命令
+
+```bash
+# 执行完整部署
+sudo bash scripts/deploy.sh
+
+# 查看服务状态
+sudo bash scripts/deploy.sh --status
+
+# 重启服务
+sudo bash scripts/deploy.sh --restart
+
+# 停止服务
+sudo bash scripts/deploy.sh --stop
+
+# 更新服务
+sudo bash scripts/deploy.sh --update
+
+# 执行备份
+sudo bash scripts/deploy.sh --backup
 ```
 
 ### 手动安装
