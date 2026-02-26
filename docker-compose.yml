@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: manual-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+      - public_data:/var/www/public:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - manual-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: manual-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://manual:${DB_PASSWORD:-manual123}@db:5432/manualdb
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    volumes:
+      - public_data:/app/public
+      - uploads_data:/app/uploads
+      - backups_data:/app/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - manual-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: manual-db
+    environment:
+      - POSTGRES_USER=manual
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-manual123}
+      - POSTGRES_DB=manualdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manual -d manualdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - manual-network
+
+  backup-scheduler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backup
+    container_name: manual-backup
+    environment:
+      - DATABASE_URL=postgres://manual:${DB_PASSWORD:-manual123}@db:5432/manualdb
+      - BACKUP_SCHEDULE=0 3 * * 0
+      - RETENTION_COUNT=4
+    volumes:
+      - postgres_data:/data/postgres:ro
+      - uploads_data:/data/uploads:ro
+      - backups_data:/backups
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - manual-network
+    profiles:
+      - production
+
+volumes:
+  public_data:
+  uploads_data:
+  postgres_data:
+  backups_data:
+
+networks:
+  manual-network:
+    driver: bridge

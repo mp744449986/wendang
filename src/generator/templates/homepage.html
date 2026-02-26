@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= siteName %></title>
+    <meta name="description" content="专业的技术文档在线浏览平台，提供设备说明书、维修手册等文档的在线浏览服务">
+    <meta property="og:title" content="<%= siteName %>">
+    <meta property="og:description" content="专业的技术文档在线浏览平台">
+    <meta property="og:url" content="<%= siteUrl %>">
+    <link rel="canonical" href="<%= siteUrl %>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        header { background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px 0; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 24px; font-weight: bold; color: #2563eb; text-decoration: none; }
+        .search-box { flex: 1; max-width: 500px; margin: 0 40px; }
+        .search-box input { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .search-results { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 8px; max-height: 400px; overflow-y: auto; display: none; }
+        .search-results.active { display: block; }
+        .search-result-item { padding: 12px 16px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .search-result-item:hover { background: #f5f5f5; }
+        main { padding: 40px 0; }
+        .section { margin-bottom: 40px; }
+        .section-title { font-size: 24px; margin-bottom: 20px; color: #1f2937; }
+        .manuals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .manual-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .manual-card:hover { transform: translateY(-4px); }
+        .manual-card h3 { font-size: 18px; margin-bottom: 8px; }
+        .manual-card h3 a { color: #1f2937; text-decoration: none; }
+        .manual-card h3 a:hover { color: #2563eb; }
+        .manual-card .brand { color: #6b7280; font-size: 14px; }
+        .manual-card .meta { color: #9ca3af; font-size: 12px; margin-top: 8px; }
+        .brands-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .brand-item { background: #fff; padding: 16px; border-radius: 8px; text-align: center; }
+        .brand-item a { color: #1f2937; text-decoration: none; font-weight: 500; }
+        .brand-item .count { color: #6b7280; font-size: 12px; margin-top: 4px; }
+        .categories-list { display: flex; flex-wrap: wrap; gap: 12px; }
+        .category-item { background: #e5e7eb; padding: 8px 16px; border-radius: 20px; font-size: 14px; }
+        footer { background: #1f2937; color: #fff; padding: 40px 0; margin-top: 40px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo"><%= siteName %></a>
+                <div class="search-box" style="position: relative;">
+                    <input type="text" id="search-input" placeholder="搜索手册..." autocomplete="off">
+                    <div id="search-results" class="search-results"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="section">
+            <h2 class="section-title">最新手册</h2>
+            <div class="manuals-grid">
+                <% manuals.forEach(function(manual) { %>
+                <div class="manual-card">
+                    <h3><a href="/manual/<%= manual.brand.toLowerCase().replace(/\s+/g, '-') %>/<%= manual.model.toLowerCase().replace(/\s+/g, '-') %>/page-1.html"><%= manual.title %></a></h3>
+                    <div class="brand"><%= manual.brand %> - <%= manual.model %></div>
+                    <div class="meta"><%= manual.page_count %> 页</div>
+                </div>
+                <% }); %>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">热门品牌</h2>
+            <div class="brands-grid">
+                <% brands.forEach(function(item) { %>
+                <div class="brand-item">
+                    <a href="/brand/<%= item.brand.toLowerCase().replace(/\s+/g, '-') %>/index.html"><%= item.brand %></a>
+                    <div class="count"><%= item.manual_count %> 本手册</div>
+                </div>
+                <% }); %>
+            </div>
+        </section>
+
+        <% if (categories && categories.length > 0) { %>
+        <section class="section">
+            <h2 class="section-title">分类</h2>
+            <div class="categories-list">
+                <% categories.forEach(function(item) { %>
+                <span class="category-item"><%= item.category %> (<%= item.manual_count %>)</span>
+                <% }); %>
+            </div>
+        </section>
+        <% } %>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; <%= new Date().getFullYear() %> <%= siteName %>. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="/js/search.js"></script>
+    <script>
+        FrontendSearch.init('/data/search-index.json');
+    </script>
+</body>
+</html>
