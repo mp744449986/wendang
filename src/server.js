@@ -1,16 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import config from '../config/index.js';
-import { errorHandler, notFoundHandler } from '../middleware/errorHandler.js';
-import { apiLimiter } from '../middleware/rateLimit.js';
-import authRoutes from '../routes/auth.js';
-import manualRoutes from '../routes/manuals.js';
-import uploadRoutes from '../routes/upload.js';
-import adRoutes from '../routes/ads.js';
-import statsRoutes from '../routes/stats.js';
-import backupRoutes from '../routes/backup.js';
-import { initDatabase } from './database.js';
+import config from './config/index.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { apiLimiter } from './middleware/rateLimit.js';
+import authRoutes from './routes/auth.js';
+import manualRoutes from './routes/manuals.js';
+import uploadRoutes from './routes/upload.js';
+import adRoutes from './routes/ads.js';
+import statsRoutes from './routes/stats.js';
+import backupRoutes from './routes/backup.js';
+import { initDatabase } from './config/database.js';
+import expressStatic from 'express-static';
 
 const app = express();
 
@@ -42,20 +43,35 @@ app.use('/api/ads', apiLimiter, adRoutes);
 app.use('/api/stats', apiLimiter, statsRoutes);
 app.use('/api/backup', apiLimiter, backupRoutes);
 
+app.use('/admin', expressStatic('./admin-frontend/dist'));
+app.get('/admin/*', (req, res) => {
+  res.sendFile('index.html', { root: './admin-frontend/dist' });
+});
+
+app.use(expressStatic('./public'));
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
 const startServer = async () => {
   try {
-    await initDatabase();
+    if (config.database.url) {
+      await initDatabase();
+    } else {
+      console.log('No database configured, starting in demo mode...');
+    }
     
     app.listen(config.port, () => {
-      console.log(`服务器运行在端口 ${config.port}`);
-      console.log(`环境: ${config.nodeEnv}`);
+      console.log(`Server running on port ${config.port}`);
+      console.log(`Environment: ${config.nodeEnv}`);
+      console.log(`Admin panel: http://localhost:${config.port}/admin`);
     });
   } catch (error) {
-    console.error('启动服务器失败:', error);
-    process.exit(1);
+    console.error('Failed to start server:', error);
+    console.log('Starting server without database...');
+    app.listen(config.port, () => {
+      console.log(`Server running on port ${config.port} (demo mode)`);
+    });
   }
 };
 

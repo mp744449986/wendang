@@ -1,28 +1,43 @@
-import { Pool } from 'pg';
-import config from '../config/index.js';
+import pkg from 'pg';
+const { Pool } = pkg;
+import config from './index.js';
 
-const pool = new Pool({
-  connectionString: config.database.url,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+let pool = null;
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-});
+const getPool = () => {
+  if (!pool && config.database.url) {
+    pool = new Pool({
+      connectionString: config.database.url,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    });
+
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle client', err);
+    });
+  }
+  return pool;
+};
 
 export const query = async (text, params) => {
+  const p = getPool();
+  if (!p) {
+    throw new Error('Database not configured');
+  }
   const start = Date.now();
-  const result = await pool.query(text, params);
+  const result = await p.query(text, params);
   const duration = Date.now() - start;
   console.log('Executed query', { text: text.substring(0, 50), duration, rows: result.rowCount });
   return result;
 };
 
 export const getClient = async () => {
-  const client = await pool.connect();
-  return client;
+  const p = getPool();
+  if (!p) {
+    throw new Error('Database not configured');
+  }
+  return await p.connect();
 };
 
 export const transaction = async (callback) => {
@@ -41,12 +56,18 @@ export const transaction = async (callback) => {
 };
 
 export const initDatabase = async () => {
+  if (!config.database.url) {
+    console.log('No database URL configured');
+    return false;
+  }
+  
   try {
-    const result = await query('SELECT NOW()');
-    console.log('数据库连接成功:', result.rows[0]);
+    const p = getPool();
+    const result = await p.query('SELECT NOW()');
+    console.log('Database connected:', result.rows[0]);
     return true;
   } catch (error) {
-    console.error('数据库连接失败:', error);
+    console.error('Database connection failed:', error.message);
     throw error;
   }
 };
@@ -55,6 +76,5 @@ export default {
   query,
   getClient,
   transaction,
-  pool,
   initDatabase,
 };
